@@ -409,20 +409,14 @@ const app = (() => {
                 submitBtn.disabled = true;
 
                 try {
-                    // TEMPORARY_AUTH_BYPASS
-                    const result = await auth.sendOTP(mobile);
-                    if (result && result.isExistingUser) {
-                        showNotification("Login सफल! 👋", `नमस्ते ${result.user.ownerName.split(' ')[0]}!`);
-                        window.location.hash = '#customer';
-                        return;
-                    }
-                    // New User: Skip OTP verification step and go straight to Profile completion
+                    await auth.sendOTP(mobile);
                     document.getElementById('otp-display-mobile').textContent = mobile;
-                    showOTPStep('profile');
-                    showNotification("Mobile Number Verify हो गया! ✅", "कृपया अपनी Profile Details भरें।");
+                    showOTPStep('verify');
+                    startResendCountdown();
+                    showNotification("OTP भेजा गया! 📩", `Mobile ${mobile} पर 6 अंकों का OTP भेजा गया है।`);
                 } catch (err) {
                     console.error("Login send error:", err);
-                    let msg = err.message;
+                    let msg = err.message || "OTP भेजने में समस्या हुई।";
                     if (!navigator.onLine) {
                         msg = "Internet चालू करके दोबारा कोशिश करें।";
                     }

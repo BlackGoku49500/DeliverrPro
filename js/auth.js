@@ -1,15 +1,14 @@
-// Deliverr - Authentication Module (Firebase OTP & Admin Email/Password)
+// DeliverrPro - Authentication Module (Supabase Phone OTP & Admin Login)
 
 const auth = (() => {
     let currentUser = null;
-    let confirmationResult = null; // Stores Firebase OTP confirmation result
-    let pendingMobile = null; // Mobile number that OTP was sent to
+    let pendingMobile = null;
     let authReadyResolve = null;
     const authReadyPromise = new Promise(resolve => { authReadyResolve = resolve; });
 
     const isAdminPage = window.location.pathname.includes('admin.html');
 
-    // Helper to validate mobile number strictly
+    // Helper to validate mobile number strictly (Indian 10-digit mobile)
     function validateMobile(mobile) {
         const mobileRegex = /^[6789]\d{9}$/;
         if (!mobile || !mobileRegex.test(mobile)) {
@@ -17,115 +16,49 @@ const auth = (() => {
         }
     }
 
-    // Helper to check if Firebase is initialized (only active when using Firebase)
-    function checkFirebase() {
-        if (CONFIG && CONFIG.databaseProvider === 'firebase') {
-            if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0) {
-                throw new Error("Firebase configuration नहीं मिला। कृपया config.js जांचें।");
-            }
-        }
-    }
-
     // --- SESSION INITIALIZATION ---
-    function initSession() {
-        // TEMPORARY_AUTH_BYPASS
-        // In bypass mode, check local storage session first
-        const bypassedMobile = localStorage.getItem('deliverr_logged_in_mobile');
-        if (bypassedMobile) {
-            db.getAdminByMobile(bypassedMobile).then(adminProfile => {
-                if (adminProfile) {
-                    if (adminProfile.status !== 'active') {
-                        localStorage.removeItem('deliverr_logged_in_mobile');
-                        currentUser = null;
-                    } else {
-                        currentUser = adminProfile;
-                    }
-                    authReadyResolve();
-                } else {
-                    db.getUserByMobile(bypassedMobile).then(profile => {
-                        if (profile) {
-                            if (profile.status === 'disabled') {
-                                localStorage.removeItem('deliverr_logged_in_mobile');
-                                currentUser = null;
-                            } else {
-                                currentUser = profile;
-                            }
-                        } else {
-                            localStorage.removeItem('deliverr_logged_in_mobile');
-                            currentUser = null;
-                        }
-                        authReadyResolve();
-                    }).catch(err => {
-                        console.error("Error loading bypassed user session:", err);
-                        localStorage.removeItem('deliverr_logged_in_mobile');
-                        currentUser = null;
-                        authReadyResolve();
-                    });
-                }
-            }).catch(err => {
-                console.error("Error loading bypassed admin session:", err);
-                localStorage.removeItem('deliverr_logged_in_mobile');
+    async function initSession() {
+        try {
+            const loggedInMobile = localStorage.getItem('deliverr_logged_in_mobile');
+            
+            if (!loggedInMobile) {
                 currentUser = null;
                 authReadyResolve();
-            });
-            return;
-        }
+                return;
+            }
 
-        if (typeof firebase === 'undefined' || !firebase.apps || firebase.apps.length === 0) {
-            console.warn("⚠️ Firebase has not been initialized. Please configure CONFIG.firebase in js/config.js.");
-            authReadyResolve();
-            return;
-        }
-
-        // Set persistence to Local so users stay logged in across restarts
-        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-            .catch(err => console.error("Persistence error:", err));
-
-        // Listen for authentication state changes
-        firebase.auth().onAuthStateChanged(async (firebaseUser) => {
-            if (firebaseUser) {
-                try {
-                    let profile = await db.getUserByUid(firebaseUser.uid);
-
-                    // Profile linking fallback: if user UID profile doesn't exist, search by mobile
-                    if (!profile) {
-                        const mobile = firebaseUser.phoneNumber ? firebaseUser.phoneNumber.replace('+91', '') : '';
-                        if (mobile) {
-                            const profileByMobile = await db.getUserByMobile(mobile);
-                            if (profileByMobile) {
-                                // Pre-created profile exists by mobile. Link it to their Firebase UID.
-                                profile = { ...profileByMobile, uid: firebaseUser.uid };
-                                await db.createUserProfile(firebaseUser.uid, profile);
-                                // Delete old document if it had a different ID (e.g. mobile or temp string)
-                                if (profileByMobile.uid !== firebaseUser.uid) {
-                                    await db.deleteUserDoc(profileByMobile.uid);
-                                }
-                            }
-                        }
-                    }
-
-                    // Admin view requires 'admin' role
-                    if (profile) {
-                        if (profile.status === 'disabled') {
-                            await firebase.auth().signOut();
-                            currentUser = null;
-                        } else {
-                            currentUser = profile;
-                        }
-                    } else {
-                        // User exists in Auth but has not completed registration profile yet
-                        currentUser = null;
-                        pendingMobile = firebaseUser.phoneNumber ? firebaseUser.phoneNumber.replace('+91', '') : null;
-                    }
-                } catch (err) {
-                    console.error("Error fetching user profile on auth state change:", err);
+            // 1. Check if logged-in user is an Admin
+            const adminProfile = await db.getAdminByMobile(loggedInMobile);
+            if (adminProfile) {
+                if (adminProfile.status !== 'active') {
+                    localStorage.removeItem('deliverr_logged_in_mobile');
                     currentUser = null;
+                } else {
+                    currentUser = adminProfile;
+                }
+                authReadyResolve();
+                return;
+            }
+
+            // 2. Check if logged-in user is a Customer in Supabase
+            const userProfile = await db.getUserByMobile(loggedInMobile);
+            if (userProfile) {
+                if (userProfile.status === 'disabled') {
+                    localStorage.removeItem('deliverr_logged_in_mobile');
+                    currentUser = null;
+                } else {
+                    currentUser = userProfile;
                 }
             } else {
+                localStorage.removeItem('deliverr_logged_in_mobile');
                 currentUser = null;
             }
+        } catch (err) {
+            console.error("Error loading Supabase user session:", err);
+            currentUser = null;
+        } finally {
             authReadyResolve();
-        });
+        }
     }
 
     return {
@@ -141,53 +74,113 @@ const auth = (() => {
         isAdmin: () => currentUser && currentUser.role === 'admin',
         getPendingMobile: () => pendingMobile,
 
-        // --- SEND OTP (TEMPORARY_AUTH_BYPASS enabled) ---
+        // --- STEP 1: SEND PHONE OTP VIA SUPABASE ---
         sendOTP: async (mobile) => {
-            // Strict 10-digit mobile number validation before database query
             validateMobile(mobile);
             pendingMobile = mobile;
 
-            // TEMPORARY_AUTH_BYPASS: Disable real OTP verification and query Firestore directly
-            try {
-                const profile = await db.getUserByMobile(mobile);
-                if (profile) {
-                    // Existing User: save local session key, set user, and redirect
-                    localStorage.setItem('deliverr_logged_in_mobile', mobile);
-                    currentUser = profile;
-                    return { isExistingUser: true, user: profile };
+            const client = typeof db.getSupabaseClient === 'function' ? db.getSupabaseClient() : null;
+
+            if (db.isMockMode() || !client) {
+                console.log(`[MOCK MODE] Demo OTP sent to +91${mobile}. Use OTP: 123456`);
+                return { success: true, mobile };
+            }
+
+            // Real Supabase Phone OTP Request
+            const fullPhone = '+91' + mobile;
+            const { data, error } = await client.auth.signInWithOtp({
+                phone: fullPhone
+            });
+
+            if (error) {
+                console.error("Supabase signInWithOtp error:", error);
+                // If Supabase phone provider has an error, provide a clear helpful message
+                if (error.message.includes("SMS provider") || error.message.includes("unsupported_phone_provider")) {
+                    throw new Error("Supabase Phone Provider setup nahi hai. Supabase Dashboard me Phone Auth activate karein.");
                 }
-                // New User: redirect to profile form
-                return { isExistingUser: false };
-            } catch (err) {
-                console.error("OTP send bypass error:", err);
-                throw err; // propagates data integrity error or connection error to UI
+                throw error;
+            }
+
+            return { success: true, mobile };
+        },
+
+        // --- STEP 2: VERIFY OTP VIA SUPABASE ---
+        verifyOTP: async (otpCode) => {
+            if (!pendingMobile) throw new Error("Mobile Number नहीं मिला। कृपया दोबारा शुरू करें।");
+            if (!otpCode || otpCode.length !== 6) {
+                throw new Error("कृपया सही 6 अंकों का OTP कोड दर्ज करें।");
+            }
+
+            const client = typeof db.getSupabaseClient === 'function' ? db.getSupabaseClient() : null;
+
+            // Mock Mode verification fallback (Accepts 123456)
+            if (db.isMockMode() || !client) {
+                if (otpCode !== '123456') {
+                    throw new Error("गलत OTP! Demo OTP 123456 दर्ज करें।");
+                }
+            } else {
+                // Real Supabase OTP Verification
+                const fullPhone = '+91' + pendingMobile;
+                const { data, error } = await client.auth.verifyOtp({
+                    phone: fullPhone,
+                    token: otpCode,
+                    type: 'sms'
+                });
+
+                if (error) {
+                    console.error("Supabase verifyOtp error:", error);
+                    throw new Error("गलत या expired OTP कोड। कृपया दोबारा कोशिश करें।");
+                }
+            }
+
+            // OTP Verified Successfully! Now check if user profile exists in Supabase
+            const existingProfile = await db.getUserByMobile(pendingMobile);
+
+            if (existingProfile) {
+                if (existingProfile.status === 'disabled') {
+                    throw new Error("आपका Account बंद (disabled) कर दिया गया है। कृपया Admin से संपर्क करें।");
+                }
+                localStorage.setItem('deliverr_logged_in_mobile', pendingMobile);
+                currentUser = existingProfile;
+                return { isNewUser: false, user: existingProfile };
+            } else {
+                // New user - needs to fill profile details (Shop name, village, etc.)
+                return { isNewUser: true, user: null };
             }
         },
 
-        // --- RESEND OTP (Bypassed) ---
+        // --- RESEND OTP ---
         resendOTP: async () => {
-            throw new Error("OTP Verification अस्थाई रूप से बंद है।");
+            if (!pendingMobile) throw new Error("Mobile Number नहीं मिला।");
+
+            const client = typeof db.getSupabaseClient === 'function' ? db.getSupabaseClient() : null;
+
+            if (db.isMockMode() || !client) {
+                console.log(`[MOCK MODE] Demo OTP resent to +91${pendingMobile}. Use OTP: 123456`);
+                return true;
+            }
+
+            const fullPhone = '+91' + pendingMobile;
+            const { error } = await client.auth.signInWithOtp({
+                phone: fullPhone
+            });
+
+            if (error) throw error;
+            return true;
         },
 
-        // --- RESET AUTH FLOW (Bypassed) ---
+        // --- RESET AUTH FLOW ---
         resetAuthFlow: () => {
-            confirmationResult = null;
             pendingMobile = null;
         },
 
-        // --- VERIFY OTP (Bypassed) ---
-        verifyOTP: async (otpCode) => {
-            throw new Error("OTP Verification अस्थाई रूप से बंद है।");
-        },
-
-        // --- COMPLETE PROFILE (New Customer - TEMPORARY_AUTH_BYPASS enabled) ---
+        // --- STEP 3: COMPLETE PROFILE (New Customer Registration in Supabase) ---
         completeProfile: async (profileData) => {
             if (!pendingMobile) throw new Error("Registration Error: Mobile Number नहीं मिला।");
             
-            // Validate mobile number
             validateMobile(pendingMobile);
 
-            // Check if exactly one customer already exists to prevent duplicate profiles
+            // Check if customer already exists in Supabase
             const existingProfile = await db.getUserByMobile(pendingMobile);
             if (existingProfile) {
                 localStorage.setItem('deliverr_logged_in_mobile', pendingMobile);
@@ -195,8 +188,6 @@ const auth = (() => {
                 return existingProfile;
             }
 
-            // TEMPORARY_AUTH_BYPASS
-            // Generate usr_{mobile} as the document ID for Firestore
             const uid = "usr_" + pendingMobile;
 
             const fullProfile = {
@@ -206,39 +197,32 @@ const auth = (() => {
                 mobile: pendingMobile,
                 village: profileData.village.trim(),
                 pincode: profileData.pincode.trim(),
-                villageArea: profileData.village.trim() + " (PIN: " + profileData.pincode.trim() + ")", // fallback compatibility
-                area: "",
+                villageArea: profileData.village.trim() + " (PIN: " + profileData.pincode.trim() + ")",
                 landmark: profileData.landmark ? profileData.landmark.trim() : "",
                 role: "customer",
                 status: "active"
             };
 
-            // Validate fields
-            if (!fullProfile.shopName) throw new Error("Shop का नाम (Shop Name) भरना ज़रूरी है।");
-            if (!fullProfile.ownerName) throw new Error("मालिक का नाम (Owner Name) भरना ज़रूरी है।");
-            if (!fullProfile.village) throw new Error("गांव का नाम (Village/Area) भरना ज़रूरी है।");
-            if (!fullProfile.pincode) throw new Error("PIN Code भरना ज़रूरी है।");
-
-            const user = await db.createUserProfile(uid, fullProfile);
-            
-            // Persist session locally
+            const created = await db.createUserProfile(uid, fullProfile);
             localStorage.setItem('deliverr_logged_in_mobile', pendingMobile);
-            currentUser = user;
-            return user;
+            currentUser = created || fullProfile;
+            return currentUser;
         },
 
-        // --- ADMIN LOGIN (Mobile + Password, admin.html only) ---
+        // --- ADMIN LOGIN (Mobile + Password via Supabase admins table) ---
         adminLogin: async (mobile, password) => {
-            checkFirebase();
             if (!mobile || mobile.length !== 10 || !/^[6789]\d{9}$/.test(mobile)) {
                 throw new Error("कृपया सही 10 अंकों का Mobile Number दर्ज करें।");
             }
             if (!password || password.length < 6) {
                 throw new Error("Password कम से कम 6 characters का होना चाहिए।");
             }
- 
+
             try {
-                // Fetch admin document from the 'admins' collection in Firestore
+                // Seed default admin if admins table in Supabase is empty
+                await db.seedAdminIfNeeded();
+
+                // Fetch admin document from 'admins' table in Supabase
                 const adminDoc = await db.getAdminByMobile(mobile);
                 
                 if (!adminDoc) {
@@ -254,12 +238,12 @@ const auth = (() => {
                     throw new Error("गलत Mobile Number या Password!");
                 }
 
-                // Persist session locally
+                // Persist session
                 localStorage.setItem('deliverr_logged_in_mobile', mobile);
                 currentUser = adminDoc;
                 return adminDoc;
             } catch (error) {
-                console.error("Admin Mobile login error:", error);
+                console.error("Supabase Admin Login error:", error);
                 throw error;
             }
         },
@@ -267,20 +251,19 @@ const auth = (() => {
         // --- LOGOUT ---
         logout: () => {
             currentUser = null;
-            confirmationResult = null;
             pendingMobile = null;
-
-            // TEMPORARY_AUTH_BYPASS
             localStorage.removeItem('deliverr_logged_in_mobile');
 
-            if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-                firebase.auth().signOut().catch(err => console.error("Firebase SignOut error:", err));
+            const client = typeof db.getSupabaseClient === 'function' ? db.getSupabaseClient() : null;
+            if (client && client.auth) {
+                client.auth.signOut().catch(e => console.error("Supabase signout:", e));
             }
 
             if (isAdminPage) {
                 window.location.reload();
             } else {
-                window.location.hash = '#landing';
+                window.location.hash = '';
+                window.location.reload();
             }
         }
     };

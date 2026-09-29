@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeliverrPro - B2B Fast Food Raw Material Supply</title>
+    <meta name="description"
+        content="DeliverrPro से अपनी Shop के लिए Burger Bun, Momos, Chowmein और बाकी Raw Materials Order करें।">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDK Compat (Preserved for rollback)
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+    -->
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', 'Noto Sans Devanagari', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Offline Banner Notification -->
+    <div id="offline-banner" style="display: none; background-color: var(--danger-color); color: var(--white); text-align: center; padding: 10px; font-weight: 700; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; font-family: 'Noto Sans Devanagari', sans-serif;">
+        <i class="fa-solid fa-circle-exclamation"></i> Internet चालू करके दोबारा कोशिश करें।
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="container nav-container">
+            <a href="#" class="logo">
+                <span class="logo-accent">D</span>eliverrPro
+            </a>
+            <nav class="nav-links" id="nav-links-container">
+                <!-- Populated dynamically by app.js -->
+            </nav>
+        </div>
+    </header>
+
+    <!-- ==========================================
+       VIEW: LANDING PAGE (CUSTOMER ONLY)
+       ========================================== -->
+    <main id="view-landing" style="display: none;">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container hero-container">
+                <div class="hero-content">
+                    <span class="badge">🍔 Fast-Food Shops के लिए नंबर 1 Supplier</span>
+                    <h1>दुकान का सारा सामान<br><span class="text-gradient">अब एक Click में!</span></h1>
+                    <p class="hero-subtext">Burger Bun, Momos, Chowmein, Sauce और Cheese की Delivery सीधे आपकी Shop पर। रोज़ाना शाम 9:00 PM तक Order करें।</p>
+
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 30px;">
+                        <a href="#login" class="btn btn-primary"><i class="fa-solid fa-store"></i> Order शुरू करें</a>
+                        <a href="#login" class="btn"
+                            style="background: var(--white); border: 1px solid var(--border-color); color: var(--dark-color);"><i
+                                class="fa-solid fa-user-plus"></i> नया Account बनाएं</a>
+                        <a href="admin.html" class="btn"
+                            style="background: var(--white); border: 1px solid var(--primary-color); color: var(--primary-color);"><i
+                                class="fa-solid fa-user-tie"></i> Admin Login</a>
+                    </div>
+
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">9:00 PM</span>
+                            <span class="stat-label">Order का आख़िरी Time</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">Super Fast</span>
+                            <span class="stat-label">कल सुबह Delivery 🚚</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">Bachat 💸</span>
+                            <span class="stat-label">Wholesale Rate</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-image-container">
+                    <div class="blob-bg"></div>
+                    <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80"
+                        alt="Food Plate" class="hero-img">
+
+                    <div class="floating-card card-1">
+                        <div class="floating-icon"><i class="fa-solid fa-box"></i></div>
+                        <div>
+                            <h4>Fresh Burger Bun</h4>
+                            <p>Daily Fresh Stock</p>
+                        </div>
+                    </div>
+                    <div class="floating-card card-2">
+                        <div class="floating-icon"><i class="fa-solid fa-truck"></i></div>
+                        <div>
+                            <h4>Morning Delivery</h4>
+                            <p>सीधे Shop पर</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="features" id="features">
+            <div class="container">
+                <div class="section-header text-center">
+                    <h2>Order करना बहुत आसान है! 🛠️</h2>
+                    <p>Phone Call की झंझट छोड़ें, Online Order करने का नया तरीका अपनाएं</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fa-solid fa-user-check"></i></div>
+                        <h3>1. Login करें</h3>
+                        <p>अपने Mobile Number से बिना Password के instant Login और Registration करें।</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fa-solid fa-cart-plus"></i></div>
+                        <h3>2. Products चुनें</h3>
+                        <p>ज़रूरत के हिसाब से Product Variant और Qty चुनें।</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fa-solid fa-credit-card"></i></div>
+                        <h3>3. Payment करें</h3>
+                        <p>Secure Online Payment करें और आपका Order Confirm हो जाएगा।</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer style="padding: 20px; text-align: center; border-top: 1px solid var(--border-color); margin-top: 40px; font-family: 'Noto Sans Devanagari', sans-serif;">
+            <p class="form-subtext" style="margin: 0; font-size: 0.85rem;">
+                © 2026 DeliverrPro. All rights reserved. | 
+                <a href="admin.html" style="color: var(--text-muted); text-decoration: none; font-weight: 600; margin-left: 5px;"><i class="fa-solid fa-user-tie"></i> Admin Login</a>
+            </p>
+        </footer>
+    </main>
+
+    <!-- ==========================================
+       VIEW: AUTHENTICATION (OTP-Based Login)
+       ========================================== -->
+    <main id="view-auth" class="container" style="display: none; padding-top: 120px; padding-bottom: 60px;">
+        <div class="auth-box">
+
+            <!-- STEP 1: Mobile Number Entry -->
+            <form id="otp-step-mobile" class="modal-form active">
+                <h3>Welcome! 👋</h3>
+                <p class="form-subtext">अपने Mobile Number से Login करें।</p>
+
+                <div class="form-group">
+                    <label for="otp-mobile-input">Mobile Number</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-phone"></i>
+                        <input type="tel" id="otp-mobile-input" required maxlength="10"
+                            placeholder="अपना 10 अंकों का Mobile Number दर्ज करें">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="btn-send-otp" style="margin-top: 20px;">
+                    <i class="fa-solid fa-right-to-bracket"></i> Login करें 🚀
+                </button>
+            </form>
+
+            <!-- STEP 2: OTP Verification -->
+            <form id="otp-step-verify" class="modal-form">
+                <h3>Enter OTP 🔐</h3>
+                <p class="form-subtext">आपके Mobile Number <strong id="otp-display-mobile"></strong> पर 6-Digit OTP भेजा गया है।</p>
+
+                <div class="form-group">
+                    <label for="otp-code-input">OTP कोड (6 अंक)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <input type="tel" id="otp-code-input" required maxlength="6"
+                            placeholder="6-Digit OTP कोड दर्ज करें">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">
+                    <i class="fa-solid fa-right-to-bracket"></i> Verify करें ✅
+                </button>
+
+                <div class="otp-actions">
+                    <button type="button" class="otp-resend-btn" id="btn-resend-otp" disabled>
+                        <i class="fa-solid fa-rotate-right"></i> <span id="resend-timer-text">30s में Resend करें</span>
+                    </button>
+                    <button type="button" class="otp-change-number-btn" id="btn-change-number">
+                        <i class="fa-solid fa-arrow-left"></i> Mobile Number बदलें
+                    </button>
+                </div>
+            </form>
+
+            <!-- STEP 3: Profile Completion (New Users) -->
+            <form id="otp-step-profile" class="modal-form">
+                <h3>Profile पूरी करें! ✨</h3>
+                <p class="form-subtext">Shop की Details भरें ताकि हम Delivery शुरू कर सकें।</p>
+
+                <div class="form-group">
+                    <label for="profile-shop">Shop का नाम (Shop Name)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-store"></i>
+                        <input type="text" id="profile-shop" required placeholder="जैसे: Sharma Fast Food">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-owner">मालिक का नाम (Owner Name)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="profile-owner" required placeholder="जैसे: Rajesh Sharma">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-village">गांव / एरिया (Village / Area)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-house-chimney"></i>
+                        <input type="text" id="profile-village" required placeholder="जैसे: Hathin Town">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-pincode">PIN Code</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-map-pin"></i>
+                        <input type="text" id="profile-pincode" required maxlength="6" pattern="[0-9]{6}" placeholder="121103">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-landmark">लैंडमार्क (Landmark - Optional)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-compass"></i>
+                        <input type="text" id="profile-landmark" placeholder="e.g. Shiv Mandir के पास">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">
+                    <i class="fa-solid fa-check-double"></i> Profile Save करें 🎉
+                </button>
+            </form>
+
+        </div>
+    </main>
+
+    <!-- ==========================================
+       VIEW: CUSTOMER PORTAL
+       ========================================== -->
+    <main id="view-customer" style="display: none; padding-top: 110px;">
+        <!-- Top Announcement Scrolling Area -->
+        <div id="broadcast-banners-area"></div>
+
+        <div class="container">
+            <!-- Welcome Header -->
+            <div class="customer-welcome">
+                <div>
+                    <h2>नमस्ते, <span id="cust-welcome-name">User</span>! 👋</h2>
+                    <p id="cust-shop-name">Shop Name</p>
+                </div>
+
+                <!-- Countdown Timer -->
+                <div class="countdown-card">
+                    <span id="countdown-timer-text">Order बंद होने में समय बचा है: <strong>00:00:00</strong> ⏳</span>
+                </div>
+            </div>
+ 
+            <!-- Time Window Warning Banner -->
+            <div id="order-warning-banner" class="warning-banner"></div>
+ 
+            <!-- Today's Order Status Banner -->
+            <div id="today-status-card" class="status-banner"></div>
+ 
+            <!-- Quick Action Options -->
+            <div class="quick-actions-row">
+                <button class="btn btn-primary" id="btn-repeat-order" onclick="customer.repeatYesterdayOrder()">
+                    <i class="fa-solid fa-rotate-left"></i> Repeat Order
+                </button>
+                <a href="#view-customer#catalog-search" class="btn"
+                    style="background: var(--white); border: 1px solid var(--border-color); color: var(--dark-color);">
+                    <i class="fa-solid fa-magnifying-glass"></i> Products खोजें
+                </a>
+            </div>
+ 
+            <!-- Regular Products Section -->
+            <div class="regular-products-section">
+                <h3><i class="fa-solid fa-star" style="color: #F1C40F;"></i> Regular Products</h3>
+                <p class="form-subtext" style="margin-bottom: 15px;">सीधे Add करने के लिए Click करें:</p>
+                <div class="regular-products-grid" id="regular-products-list">
+                    <!-- Loaded dynamically by customer.js -->
+                </div>
+            </div>
+ 
+            <!-- Main Catalog Section -->
+            <div class="catalog-section">
+                <div class="catalog-header">
+                    <h3>🛒 Products Catalog</h3>
+ 
+                    <!-- Search & Filter Controls -->
+                    <div class="catalog-controls">
+                        <div class="search-input-wrapper">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="catalog-search" placeholder="Products खोजें...">
+                        </div>
+                        <select id="catalog-category" class="category-select">
+                            <option value="">Category चुनें</option>
+                            <option value="Breads & Buns">Breads & Buns</option>
+                            <option value="Momos">Momos</option>
+                            <option value="Noodles & Pasta">Noodles & Pasta</option>
+                            <option value="Rolls">Rolls</option>
+                            <option value="Patties & Snacks">Patties & Snacks</option>
+                            <option value="Cheese & Dairy">Cheese & Dairy</option>
+                            <option value="Sauces & Spreads">Sauces & Spreads</option>
+                            <option value="Eggs & Dairy">Eggs & Dairy</option>
+                        </select>
+                    </div>
+                </div>
+ 
+                <!-- Products Grid -->
+                <div class="catalog-grid" id="catalog-grid">
+                    <!-- Loaded dynamically by customer.js -->
+                </div>
+            </div>
+ 
+            <!-- Order History Section -->
+            <div class="history-section">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> Order History</h3>
+                <div class="history-list" id="order-history-list">
+                    <!-- Loaded dynamically by customer.js -->
+                </div>
+            </div>
+        </div>
+ 
+        <!-- Floating Cart Bar -->
+        <div class="floating-cart-bar" id="floating-cart-bar">
+            <div class="floating-cart-info">
+                <span class="cart-count-badge" id="cart-count-badge">0</span>
+                <div>
+                    <h4>Cart</h4>
+                    <p id="cart-total-text">₹0</p>
+                </div>
+            </div>
+            <button class="btn btn-secondary">
+                Cart देखें <i class="fa-solid fa-basket-shopping"></i>
+            </button>
+        </div>
+ 
+        <!-- Cart Slide-out Modal / Drawer -->
+        <div class="modal-overlay" id="cart-modal">
+            <div class="cart-drawer">
+                <div class="cart-drawer-header">
+                    <h3><i class="fa-solid fa-basket-shopping"></i> Cart</h3>
+                    <button class="modal-close-btn" id="close-cart-btn">&times;</button>
+                </div>
+                <div class="cart-drawer-body">
+                    <div id="cart-items-list">
+                        <!-- Loaded dynamically by customer.js -->
+                    </div>
+                </div>
+                <div class="cart-drawer-footer">
+                    <div class="cart-summary-row">
+                        <span>कुल Qty:</span>
+                        <span id="cart-count-modal" style="font-weight: 600;">0 Qty</span>
+                    </div>
+                    <div class="cart-summary-row">
+                        <span>Total Amount:</span>
+                        <h3 id="cart-total-modal" class="text-gradient">₹0</h3>
+                    </div>
+                    <button class="btn btn-primary btn-block" id="btn-checkout-cart" onclick="customer.checkout()">
+                        Order Submit करें (Payment) <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Success/Warning/Error Toast Notification -->
+    <div class="toast" id="toast-notification">
+        <div class="toast-content">
+            <i class="fa-solid fa-circle-check toast-icon"></i>
+            <div class="toast-message">
+                <h4 id="toast-title">Success</h4>
+                <p id="toast-body">आपका काम हो गया।</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Javascript Modules -->
+    <script src="js/config.js"></script>
+    <script src="js/supabase-db.js"></script>
+    <!-- <script src="js/firebase-db.js"></script> (Preserved) -->
+    <script src="js/auth.js"></script>
+    <script src="js/customer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

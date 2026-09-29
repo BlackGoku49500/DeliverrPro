@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeliverrPro - Admin Operations Control Center</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <!-- Firebase SDK Compat (Preserved for rollback)
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+    -->
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="container nav-container">
+            <a href="admin.html" class="logo">
+                <span class="logo-accent">D</span>eliverrPro <span
+                    style="font-size: 1rem; color: var(--text-muted); font-weight: 600;">Admin</span>
+            </a>
+            <nav class="nav-links" id="nav-links-container">
+                <!-- Populated dynamically by app.js -->
+            </nav>
+        </div>
+    </header>
+
+    <!-- ==========================================
+       VIEW: ADMIN LOGIN (SECRET FOR ADMIN ONLY)
+       ========================================== -->
+    <main id="view-auth" class="container" style="display: none; padding-top: 140px; padding-bottom: 60px;">
+        <div class="auth-box" style="max-width: 450px;">
+            <div class="text-center" style="margin-bottom: 25px;">
+                <h2>Admin Login 🛠️</h2>
+                <p class="form-subtext">DeliverrPro के Orders और Products मैनेज करने के लिए Login करें।</p>
+            </div>
+
+            <!-- Admin Login Form -->
+            <form id="page-login-form" class="modal-form active">
+                <div class="form-group">
+                    <label for="page-login-mobile">Mobile Number</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-phone"></i>
+                        <input type="tel" id="page-login-mobile" required maxlength="10"
+                            placeholder="अपना 10 अंकों का Mobile Number दर्ज करें">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="page-login-pass">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="page-login-pass" required placeholder="अपना Password दर्ज करें">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">
+                    <i class="fa-solid fa-lock-open"></i> Dashboard खोलें 🚀
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <!-- ==========================================
+       VIEW: ADMIN PORTAL
+       ========================================== -->
+    <main id="view-admin" style="display: none; padding-top: 110px; padding-bottom: 60px;">
+        <div class="container">
+            <div class="admin-header">
+                <h2>Admin Dashboard 🛠️</h2>
+                <p>DeliverrPro Operations Control Panel</p>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="admin-stats-grid">
+                <div class="admin-stat-card">
+                    <h4>Today's Orders</h4>
+                    <h2 id="stat-today-orders">0</h2>
+                </div>
+                <div class="admin-stat-card">
+                    <h4>Today's Revenue</h4>
+                    <h2 id="stat-today-revenue">₹0</h2>
+                </div>
+                <div class="admin-stat-card">
+                    <h4>Pending Orders</h4>
+                    <h2 id="stat-pending-orders">0</h2>
+                </div>
+                <div class="admin-stat-card">
+                    <h4>Completed Orders</h4>
+                    <h2 id="stat-completed-orders">0</h2>
+                </div>
+                <div class="admin-stat-card">
+                    <h4>Total Customers</h4>
+                    <h2 id="stat-total-customers">0</h2>
+                </div>
+                <div class="admin-stat-card">
+                    <h4>Total Products</h4>
+                    <h2 id="stat-total-products">0</h2>
+                </div>
+            </div>
+
+            <!-- Admin Section Tabs -->
+            <div class="admin-tabs">
+                <button class="admin-tab-btn active" onclick="admin.init()">Active Orders</button>
+                <button class="admin-tab-btn" onclick="admin.init()">Today's Delivery List</button>
+                <button class="admin-tab-btn" onclick="admin.init()">Procurement Summary</button>
+                <button class="admin-tab-btn" onclick="admin.init()">Product Management</button>
+                <button class="admin-tab-btn" onclick="admin.init()">Customer Management</button>
+                <button class="admin-tab-btn" onclick="admin.init()">Broadcast Center</button>
+                <button class="admin-tab-btn" onclick="admin.init()">Settings</button>
+            </div>
+
+            <!-- Tab Content: Active Orders -->
+            <div class="admin-tab-content active-content" id="admin-sec-orders">
+                <div class="tab-section-header">
+                    <h3>📋 Active Orders</h3>
+                    <p>Orders को ट्रैक और अपडेट करें</p>
+                </div>
+                <div class="admin-orders-grid" id="admin-orders-list">
+                    <!-- Loaded dynamically by admin.js -->
+                </div>
+            </div>
+
+            <!-- Tab Content: Today's Delivery List -->
+            <div class="admin-tab-content" id="admin-sec-delivery">
+                <div class="tab-section-header">
+                    <h3>🚚 Today's Delivery List</h3>
+                    <p>गाँव / एरिया के अनुसार Delivery Groups</p>
+                </div>
+                <div id="delivery-list-container">
+                    <!-- Grouped rows loaded dynamically by admin.js -->
+                </div>
+            </div>
+
+            <!-- Tab Content: Daily Procurement Summary -->
+            <div class="admin-tab-content" id="admin-sec-procurement">
+                <div class="tab-section-header">
+                    <h3>🏭 Procurement Summary</h3>
+                    <p>आज के कुल सामान की Procurement Summary. प्रिंट या एक्सेल एक्सपोर्ट करें।</p>
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button class="btn"
+                            style="background: var(--white); border: 1px solid var(--border-color); color: var(--dark-color);"
+                            onclick="window.print()">
+                            <i class="fa-solid fa-print"></i> Print Summary
+                        </button>
+                        <button class="btn btn-secondary" onclick="admin.exportProcurementExcel()">
+                            <i class="fa-solid fa-file-excel"></i> Export Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="procurement-table-wrapper card">
+                    <table class="procurement-table">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Product Name</th>
+                                <th>Unit</th>
+                                <th>Total Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="procurement-summary-table">
+                            <!-- Populated dynamically by admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab Content: Product Management -->
+            <div class="admin-tab-content" id="admin-sec-inventory">
+                <div class="tab-section-header">
+                    <h3>📦 Product Management</h3>
+                    <p>Products List, Price और Status मैनेज करें</p>
+                    <button class="btn btn-primary" style="margin-top: 15px;" onclick="admin.openAddProductModal()">
+                        <i class="fa-solid fa-plus"></i> Product Add करें
+                    </button>
+                </div>
+                <div class="inventory-grid" id="admin-inventory-list">
+                    <!-- Populated dynamically by admin.js -->
+                </div>
+            </div>
+
+            <!-- Tab Content: Customer Management -->
+            <div class="admin-tab-content" id="admin-sec-customers">
+                <div class="tab-section-header">
+                    <h3>👥 Customer Management</h3>
+                    <p>Customers Profile और Status मैनेज करें</p>
+                    <div class="search-input-wrapper" style="max-width: 400px; margin-top: 15px;">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="admin-customer-search" oninput="admin.renderCustomersList(this.value)"
+                            placeholder="Shop या Owner का नाम खोजें...">
+                    </div>
+                </div>
+                <div class="customers-list-grid" id="admin-customers-list">
+                    <!-- Populated dynamically by admin.js -->
+                </div>
+            </div>
+
+            <!-- Tab Content: Broadcast Center -->
+            <div class="admin-tab-content" id="admin-sec-broadcast">
+                <div class="tab-section-header">
+                    <h3>📢 Broadcast Center</h3>
+                    <p>सभी Customers को Alert या Notification भेजें</p>
+                </div>
+
+                <div class="admin-broadcast-container">
+                    <!-- Form to create announcement -->
+                    <div class="card">
+                        <h4>नई Announcement भेजें</h4>
+                        <form id="bc-form" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="bc-title">Title (Heading)</label>
+                                <div class="input-wrapper">
+                                    <input type="text" id="bc-title" required placeholder="e.g. Sunday Delivery Update">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="bc-message">Message</label>
+                                <div class="input-wrapper">
+                                    <textarea id="bc-message" required rows="4"
+                                        style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: inherit; resize: none;"
+                                        placeholder="अपना Message Simple Devanagari में लिखें..."></textarea>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="bc-priority">Priority</label>
+                                <select id="bc-priority" class="form-select-custom">
+                                    <option value="normal">Normal (Notification Banner)</option>
+                                    <option value="important">Important (Highlighted Banner)</option>
+                                    <option value="urgent">Urgent (Popup Alert - Order करने से पहले पढ़ना ज़रूरी है)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bc-expiry">Expiry Date & Time</label>
+                                <div class="input-wrapper">
+                                    <input type="datetime-local" id="bc-expiry" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Broadcast भेजें 📢</button>
+                        </form>
+                    </div>
+
+                    <!-- Sent announcements list -->
+                    <div>
+                        <h4>Sent Announcements</h4>
+                        <div class="admin-broadcasts-list" id="admin-broadcasts-list" style="margin-top: 15px;">
+                            <!-- Populated dynamically by admin.js -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Settings -->
+            <div class="admin-tab-content" id="admin-sec-settings">
+                <div class="tab-section-header">
+                    <h3>⚙️ Settings</h3>
+                    <p>DeliverrPro Settings कॉन्फ़िगर करें</p>
+                </div>
+                <div class="card" style="max-width: 500px; margin-top: 20px;">
+                    <h4>Order Closing Time Limit</h4>
+                    <p class="form-subtext" style="margin-bottom: 15px;">Shops किस समय के बाद Order सबमिट नहीं कर पाएंगे?</p>
+                    <div class="form-group">
+                        <label for="admin-close-time-input">Closing Time (HH:MM)</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-clock"></i>
+                            <input type="time" id="admin-close-time-input" style="padding-left: 44px;">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="admin.saveTimeSettings()">Save Settings 💾</button>
+                </div>
+
+                <div class="card" style="max-width: 500px; margin-top: 25px;">
+                    <h4>📍 Service Areas Management</h4>
+                    <p class="form-subtext" style="margin-bottom: 15px;">Delivery के लिए allowed PIN Codes मैनेज करें।</p>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                            <input type="text" id="admin-pincode-input" placeholder="PIN Code"
+                                style="padding: 10px; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                        </div>
+                        <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                            <input type="text" id="admin-area-name-input" placeholder="Area Name"
+                                style="padding: 10px; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                        </div>
+                        <button class="btn btn-primary" style="flex: 1; padding: 10px;"
+                            onclick="admin.addServiceArea()"><i class="fa-solid fa-plus"></i> Add 📍</button>
+                    </div>
+
+                    <div class="service-areas-list" id="admin-service-areas-list"
+                        style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                        <!-- Populated dynamically by admin.js -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Success/Warning/Error Toast Notification -->
+    <div class="toast" id="toast-notification">
+        <div class="toast-content">
+            <i class="fa-solid fa-circle-check toast-icon"></i>
+            <div class="toast-message">
+                <h4 id="toast-title">Success</h4>
+                <p id="toast-body">काम पूरा हो गया।</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Javascript Modules -->
+    <script src="js/config.js"></script>
+    <script src="js/supabase-db.js"></script>
+    <!-- <script src="js/firebase-db.js"></script> (Preserved) -->
+    <script src="js/auth.js"></script>
+    <script src="js/admin.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- Handle Admin Tab Switching directly in HTML for simplicity -->
+    <script>
+        document.querySelectorAll('.admin-tab-btn').forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+                // Remove active classes
+                document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active-content'));
+
+                // Add active class
+                btn.classList.add('active');
+
+                const tabs = [
+                    'admin-sec-orders',
+                    'admin-sec-delivery',
+                    'admin-sec-procurement',
+                    'admin-sec-inventory',
+                    'admin-sec-customers',
+                    'admin-sec-broadcast',
+                    'admin-sec-settings'
+                ];
+
+                const targetTab = document.getElementById(tabs[index]);
+                if (targetTab) targetTab.classList.add('active-content');
+            });
+        });
+    </script>
+</body>
+
+</html>

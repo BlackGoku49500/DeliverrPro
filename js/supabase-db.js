@@ -167,8 +167,7 @@ const db = (() => {
 
     return {
         isMockMode: () => isMock,
-
-        // --- USER PROFILE LOOKUPS ---
+        getSupabaseClient: () => supabaseClient,
         getUserByUid: async (uid) => {
             if (isMock || !supabaseClient) {
                 const users = mockStorage.get('users') || [];
@@ -205,8 +204,14 @@ const db = (() => {
 
         createUserProfile: async (uid, profileData) => {
             const userData = {
-                uid,
-                ...profileData,
+                uid: uid,
+                shopName: (profileData.shopName || "").trim(),
+                ownerName: (profileData.ownerName || "").trim(),
+                mobile: (profileData.mobile || "").trim(),
+                village: (profileData.village || "").trim(),
+                pincode: (profileData.pincode || "").trim(),
+                villageArea: profileData.villageArea || ((profileData.village || "").trim() + " (PIN: " + (profileData.pincode || "").trim() + ")"),
+                landmark: (profileData.landmark || "").trim(),
                 role: profileData.role || "customer",
                 status: profileData.status || "active",
                 createdAt: nowISO()

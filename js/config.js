@@ -13,8 +13,8 @@ const CONFIG = {
 
     // 2. Firebase Configuration (Archived / Inactive - preserved for fallback)
     firebase: {
-        apiKey: "AIzaSyAJM-BwRMR8QjXT3rr-Hx1DtRJv5030t3w",
-        authDomain: "deliverr-c7900.firebaseapp.com",
+        apiKey: "",
+        authDomain: "",
         projectId: "deliverr-c7900",
         storageBucket: "deliverr-c7900.firebasestorage.app",
         messagingSenderId: "1018867296999",
